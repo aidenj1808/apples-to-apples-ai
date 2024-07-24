@@ -8,8 +8,8 @@ def main():
     players = ["Tyler", "Darion", "Aiden", "Malcom", "AI"]
 
     # create instances of Decks (red/green)
-    red_deck = Deck("red_deck.txt")
-    green_deck = Deck("green_deck.txt")
+    red_deck = Deck("all_red_cards.csv")
+    green_deck = Deck("all_green_cards.csv")
 
     # create an instance of the game
     game = ApplesToApples(players, red_deck, green_deck)

@@ -8,7 +8,8 @@ class Deck():
 
         with open(filename, 'r') as file:
             for line in file:
-                self.cards.append(line.strip())
+                _, card, _ = line.strip().split(",", 2)
+                self.cards.append(card)
                 self.size += 1
 
     def shuffle(self):
