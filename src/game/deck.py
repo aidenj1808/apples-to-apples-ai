@@ -7,6 +7,7 @@ class Deck():
         self.filename = filename
 
         with open(filename, 'r') as file:
+            file.readline()
             for line in file:
                 _, card, _ = line.strip().split(",", 2)
                 self.cards.append(card)
