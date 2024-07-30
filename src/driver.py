@@ -6,21 +6,21 @@ class Driver():
     """
     A driver to simulate games of apples to apples against various AI agents.
     """
-    def __init__(self, player_count: int, agents: list[str], n_games: int) -> None:
+    def __init__(self, agents: list[str], n_games: int) -> None:
         """
-        Initializes player count, agent programs, and number of games from
-        creating an instance. Initializes an agents list from argv, a red deck,
-        a green deck, the score to win the game, the current judge index, and
-        the agent scores.
+        Initializes agent programs, and number of games from
+        creating an instance. Initializes player count from the length of argv
+        agents, an agents list from argv, a red deck, a green deck, the score to
+        win the game, the current judge index, and the agent scores.
         """
-        self.player_count = player_count
         self.agent_programs = agents
         self.n_games = n_games
+        self.player_count = len(agents)
         self.agents = [f"{i}-{agent}" for i, agent in enumerate(self.agent_programs)]
         self.red_deck = Deck("all_red_cards.csv")
         self.green_deck = Deck("all_green_cards.csv")
         self.winning_the_game = {4: 8, 5: 7, 6: 6, 7: 5, 8: 4, 9: 4, 10: 4}
-        self.cards_to_win = self.winning_the_game[player_count]
+        self.cards_to_win = self.winning_the_game[self.player_count]
         self.current_judge_index = 0
         self.agent_scores = {f"{i}-{agent}": 0 for i, agent in enumerate(self.agent_programs)}
         
@@ -115,8 +115,10 @@ class Driver():
         The main simulation loop of the program. Loops for each n_games,
         initializes the game and while an agent isn't a winner it plays out a
         round and deals cards. If there is a winner, the winner is printed and
-        the next game is played.
+        the next game is played. After all games are played the final results
+        are printed.
         """
+        final_results = {agent: 0 for agent in self.agents}
         for k_game in range(1, self.n_games + 1):
             self.initialize_game()
             print(f"Game {k_game}\n")
@@ -130,15 +132,21 @@ class Driver():
             for agent, score in self.agent_scores.items():
                 if score == self.cards_to_win:
                     self.print_scores(self.agent_scores)
+                    final_results[agent] += 1
                     print(f"{agent} won the game!\n\n")
-
                     break
+            
+        final_results = list(sorted(final_results.items(), key=lambda x:x[1], reverse=True))
+        print(f"Final Results for {self.n_games} Games:\n")
+        print("Agent\t\t\tGames Won\tW/L%")
+        for agent, games_won in final_results:
+            print(f"{agent}\t{games_won}\t\t{games_won / self.n_games * 100:.2f}")
 
 
 def main():
     arguments = sys.argv
 
-    driver = Driver(4, arguments[1:], 2)
+    driver = Driver(arguments[1:], 5)
     driver.main_loop()
 
 
