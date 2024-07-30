@@ -144,10 +144,14 @@ class Driver():
 
 
 def main():
-    arguments = sys.argv
-
-    driver = Driver(arguments[1:], 5)
-    driver.main_loop()
+    try:
+        arguments = sys.argv
+        n_games = int(arguments[-1])
+        driver = Driver(arguments[1: -1], n_games)
+        driver.main_loop()
+    except Exception as e:
+        print(e)
+        print("Usage: python3 driver.py [agents] [number of games]")
 
 
 if __name__ == "__main__":
