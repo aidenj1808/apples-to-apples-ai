@@ -1,14 +1,12 @@
 from difflib import SequenceMatcher
 
-
-# create a player class for Apples to Apples which has a name and a hand of red cards and a score checks for AI players and associates correlation
 class Player:
     def __init__(self, name, is_ai=False):
-        self.name = name        #name of the player
-        self.hand = []          #list of red cards in the player's hand
-        self.score = 0          #score of the player
-        self.is_ai = is_ai      #check if the player is an AI
-        self.correlation = {}   #correlation of the player's hand to the green card
+        self.name = name
+        self.hand = []
+        self.score = 0
+        self.is_ai = is_ai
+        self.correlation = {}
 
     def add_card_to_hand(self, card):
         self.hand.append(card)
@@ -35,7 +33,10 @@ class Player:
                 if similarity > best_similarity:
                     best_similarity = similarity
                     best_match = card
+            self.hand.remove(best_match)
             return best_match
 
     def calculate_similarity(self, card1, card2):
         return SequenceMatcher(None, card1, card2).ratio()
+
+
