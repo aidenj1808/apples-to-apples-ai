@@ -5,8 +5,6 @@ import random
 def agent_function(hand: list[str], green_card: str) -> str:
     return random.choice(hand)
 
-
-
 def main():
     hand = sys.argv[1].split(',')
     green_card = sys.argv[2]
