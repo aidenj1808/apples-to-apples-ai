@@ -34,14 +34,15 @@ import ollama
 def agent_function(hand: list[str], green_card: str) -> str:
     hand = [card.lower() for card in hand]
     prompt = (f"What noun is most associated with {green_card}? {hand}."
-        "Give me just your answer as one word and no explanation or punctuation.")
+               "Give me just your answer exactly how the word is written, "
+               "no explanation or punctuation.")
     output = ollama.generate(model="llama3.1", prompt=prompt)["response"]
     return output
 
     
 def main():
     hand = sys.argv[1].split(',')
-    green_card = sys.argv[2]
+    green_card = " ".join(sys.argv[2])
     play = agent_function(hand, green_card)
     print(play)
 
