@@ -1,6 +1,8 @@
 import sys
 import subprocess
+from traceback import format_exc
 from game import Deck
+
 
 class Driver():
     """
@@ -65,6 +67,14 @@ class Driver():
 
         self.initialize_cards()
 
+    def get_closest_output(self, cards: list[str], output: str) -> str:
+        cards_with_output = {card: 0 for card in cards if output in card}
+        for card, _ in cards_with_output.items():
+            for word in card.split(" "):
+                if word == output:
+                    cards_with_output[card] += 1
+        return list(sorted(cards_with_output.items(), key=lambda x:x[1]))[0][0]
+        
     def get_agent_plays(self, green_card: str) -> list[str]:
         agent_plays = []
         for i, agent in enumerate(self.agent_programs):
@@ -72,25 +82,28 @@ class Driver():
                 continue
 
             hand = self.agent_hands[f"{i}-{agent}"]
-            hand = str([card.strip("'\"") for card in hand])[1: -1]
+            hand = str(",".join(hand))
             agent_play = subprocess.run(["python3", agent, hand, green_card],
                                         capture_output=True, text=True)
             agent_play = agent_play.stdout.strip().lower()
-            agent_plays.append([f"{i}-{agent}", agent_play])
-            self.agent_hands[self.agents[i]].remove(agent_play.strip("'\""))
+            closest_output = self.get_closest_output(hand.split(","), agent_play)
+            agent_plays.append([f"{i}-{agent}", closest_output])
+            self.agent_hands[self.agents[i]].remove(closest_output)
         return agent_plays
 
     def get_winning_results(self, agent_plays: list[str], green_card: str) -> list[str]:
-        cards_played = str([card.strip("'\"") for _, card in agent_plays])[1: -1]
+        cards_played = [card for _, card in agent_plays]
+        cards_played = str(",".join(cards_played))
         winning_card = subprocess.run(["python3",
                                        self.agent_programs[self.current_judge_index],
                                        cards_played,
                                        green_card],
                                       capture_output=True, text=True)
         winning_card = winning_card.stdout.strip().lower()
+        closest_output = self.get_closest_output(cards_played.split(","), winning_card)
         winning_agent = ""
         for agent, play in agent_plays:
-            if play == winning_card:
+            if play == closest_output:
                 winning_agent = agent
                 self.agent_scores[agent] += 1
                 break
@@ -109,7 +122,6 @@ class Driver():
         green_card = self.green_deck.draw_card()
         agent_plays = self.get_agent_plays(green_card)
         winning_agent, winning_card, cards_played = self.get_winning_results(agent_plays, green_card)
-
 
         results = f"Winning Agent: {winning_agent}\n"
         results += f"Winning Card: {winning_card}\n"
@@ -164,7 +176,8 @@ def main():
         driver = Driver(arguments[1: -1], n_games)
         driver.main_loop()
     except Exception as e:
-        print(e)
+        print("Error", e)
+        print(format_exc())
         print("Usage: python3 driver.py [agents] [number of games]")
 
 
