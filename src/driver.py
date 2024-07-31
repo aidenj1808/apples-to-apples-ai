@@ -81,12 +81,15 @@ class Driver():
         for i, agent in enumerate(self.agent_programs):
             if i == self.current_judge_index:
                 continue
-            hand = str(self.agent_hands[f"{i}-{agent}"])[1: -1].replace("'", "")
+            hand = self.agent_hands[f"{i}-{agent}"]
+            hand = str([card.strip("'\"") for card in hand])[1: -1]
             agent_play = subprocess.run(["python3", agent, hand, green_card],
                                         capture_output=True)
-            agent_plays.append([f"{i}-{agent}", agent_play.stdout.strip().decode()])
+            agent_play = agent_play.stdout.strip().decode()
+            agent_plays.append([f"{i}-{agent}", agent_play])
+            self.agent_hands[self.agents[i]].remove(agent_play.strip("'\""))
 
-        cards_played = str([card for _, card in agent_plays])[1: -1].replace("'", "")
+        cards_played = str([card.strip("'\"") for _, card in agent_plays])[1: -1]
         winning_card = subprocess.run(["python3", self.agent_programs[self.current_judge_index], cards_played, green_card],
                                       capture_output=True)
         winning_card = winning_card.stdout.strip().decode()
