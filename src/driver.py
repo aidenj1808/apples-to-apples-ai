@@ -81,6 +81,7 @@ class Driver():
         for i, agent in enumerate(self.agent_programs):
             if i == self.current_judge_index:
                 continue
+
             hand = self.agent_hands[f"{i}-{agent}"]
             hand = str([card.strip("'\"") for card in hand])[1: -1]
             agent_play = subprocess.run(["python3", agent, hand, green_card],
