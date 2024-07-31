@@ -13,7 +13,7 @@ def agent_function(hand: list[str], green_card: str) -> str:
         associations.append([red_card, association])
 
     associations_sorted = sorted(associations, key=lambda x:x[1], reverse=True)
-    return associations_sorted[0][1]
+    return associations_sorted[0][0]
 
 def main():
     hand = sys.argv[1].split(',')
