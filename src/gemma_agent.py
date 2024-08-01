@@ -40,7 +40,6 @@ def agent_function(hand: list[str], green_card: str) -> str:
     output = ollama.generate(model="gemma2", prompt=prompt)["response"]
     return output
 
-    
 def main():
     hand = sys.argv[1].split(',')
     green_card = " ".join(sys.argv[2])
