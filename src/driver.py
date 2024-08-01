@@ -67,13 +67,15 @@ class Driver():
 
         self.initialize_cards()
 
-    def get_closest_output(self, cards: list[str], output: str) -> str:
-        cards_with_output = {card: 0 for card in cards if output in card}
-        for card, _ in cards_with_output.items():
-            for word in card.split(" "):
-                if word == output:
-                    cards_with_output[card] += 1
-        return list(sorted(cards_with_output.items(), key=lambda x:x[1]))[0][0]
+    def get_closest_output(self, cards: list[str], output: str) -> str | int:
+        cards_with_output = []
+        for card in cards:
+            if output in card:
+                cards_with_output.append(card)
+
+        if len(cards_with_output) > 0:
+            return cards_with_output[0]
+        return -1
         
     def get_agent_plays(self, green_card: str) -> list[str]:
         agent_plays = []
@@ -82,32 +84,57 @@ class Driver():
                 continue
 
             hand = self.agent_hands[f"{i}-{agent}"]
-            hand = str(",".join(hand))
-            agent_play = subprocess.run(["python3", agent, hand, green_card],
+            hand_arg = str(",".join(hand))
+
+            agent_play = subprocess.run(["python3", agent, hand_arg, green_card],
                                         capture_output=True, text=True)
             agent_play = agent_play.stdout.strip().lower()
-            closest_output = self.get_closest_output(hand.split(","), agent_play)
-            agent_plays.append([f"{i}-{agent}", closest_output])
-            self.agent_hands[self.agents[i]].remove(closest_output)
+
+            if agent_play not in hand:
+                closest_output = self.get_closest_output(hand_arg.split(","), agent_play)
+                while closest_output == -1:
+                    agent_play = subprocess.run(["python3", agent, hand_arg, green_card],
+                                                capture_output=True, text=True)
+                    agent_play = agent_play.stdout.strip().lower()
+                    closest_output = self.get_closest_output(hand_arg.split(","), agent_play)
+
+                agent_plays.append([f"{i}-{agent}", closest_output])
+                self.agent_hands[self.agents[i]].remove(closest_output)
+            else:
+                agent_plays.append([f"{i}-{agent}", agent_play])
+                self.agent_hands[self.agents[i]].remove(agent_play)
+
         return agent_plays
 
-    def get_winning_results(self, agent_plays: list[str], green_card: str) -> list[str]:
+    def get_winning_results(self, agent_plays: list[str], green_card: str) -> list[str | int]:
         cards_played = [card for _, card in agent_plays]
-        cards_played = str(",".join(cards_played))
+        cards_played_arg = str(",".join(cards_played))
+
         winning_card = subprocess.run(["python3",
                                        self.agent_programs[self.current_judge_index],
-                                       cards_played,
+                                       cards_played_arg,
                                        green_card],
                                       capture_output=True, text=True)
         winning_card = winning_card.stdout.strip().lower()
-        closest_output = self.get_closest_output(cards_played.split(","), winning_card)
+
+        if winning_card not in cards_played:
+            winning_card = self.get_closest_output(cards_played_arg.split(","), winning_card)
+            while winning_card == -1:
+                winning_card = subprocess.run(["python3",
+                                               self.agent_programs[self.current_judge_index],
+                                               cards_played_arg,
+                                               green_card],
+                                              capture_output=True, text=True)
+                winning_card = winning_card.stdout.strip().lower()
+                winning_card = self.get_closest_output(cards_played_arg.split(","), winning_card)
+
         winning_agent = ""
         for agent, play in agent_plays:
-            if play == closest_output:
+            if play == winning_card:
                 winning_agent = agent
                 self.agent_scores[agent] += 1
                 break
-        return [winning_agent, winning_card, cards_played]
+        return [winning_agent, winning_card, cards_played_arg]
 
     def play_round(self) -> None:
         """
@@ -123,11 +150,11 @@ class Driver():
         agent_plays = self.get_agent_plays(green_card)
         winning_agent, winning_card, cards_played = self.get_winning_results(agent_plays, green_card)
 
-        results = f"Winning Agent: {winning_agent}\n"
-        results += f"Winning Card: {winning_card}\n"
-        results += f"Judge: {self.agents[self.current_judge_index]}\n"
-        results += f"Green Card: {green_card}\n"
-        results += f"Cards Played: {cards_played}\n"
+        results = (f"Winning Agent: {winning_agent}\n"
+                   f"Winning Card: {winning_card}\n"
+                   f"Judge: {self.agents[self.current_judge_index]}\n"
+                   f"Green Card: {green_card}\n"
+                   f"Cards Played: {cards_played}\n")
         print(results)
         self.current_judge_index = (self.current_judge_index + 1) % self.player_count
 
