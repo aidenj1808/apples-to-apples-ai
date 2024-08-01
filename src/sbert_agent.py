@@ -1,3 +1,27 @@
+"""
+Installation:
+
+Create virtual environment:
+Mac/Linux:
+python3 -m venv .venv
+
+Windows:
+python -m venv .venv
+-----------------------------
+Activate virtual environment:
+Mac/Linux:
+source .venv/bin/activate
+
+Windows (PowerShell):
+.\.venv\Scripts\Activate.ps1
+-----------------------------
+Pip install:
+Mac/Linux:
+pip3 install -U sentence-transformers
+
+Windows:
+pip install -U sentence-transformers
+"""
 import sys
 from sentence_transformers import SentenceTransformer
 
