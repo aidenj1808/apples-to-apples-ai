@@ -83,6 +83,7 @@ class Driver():
                               stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE,
                               text=True)
+
         stdout, _ = proc.communicate(info)
         play = stdout.strip().lower()
         while play not in hand:
@@ -111,6 +112,7 @@ class Driver():
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE,
                                 text=True)
+
         winning_card, _ = proc.communicate(info)
         winning_card = winning_card.rstrip().lower()
         while winning_card not in cards_played:
