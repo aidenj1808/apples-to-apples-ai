@@ -24,6 +24,7 @@ class Driver():
         self.winning_the_game = {4: 8, 5: 7, 6: 6, 7: 5, 8: 4, 9: 4, 10: 4}
         self.cards_to_win = self.winning_the_game[self.player_count]
         self.current_judge_index = 0
+        self.current_judge = self.agents[self.current_judge_index]
         self.agent_scores = {f"{i}-{agent}": 0 for i, agent in enumerate(self.agent_programs)}
         
     def initialize_cards(self) -> None:
@@ -67,66 +68,59 @@ class Driver():
 
         self.initialize_cards()
 
-    def get_closest_output(self, cards: list[str], output: str) -> str | int:
-        cards_with_output = []
-        for card in cards:
-            if output in card:
-                cards_with_output.append(card)
+    def format_hand(self, hand: list[str]) -> str:
+        hand = [card.replace(" ", "_") for card in hand]
+        return ",".join(hand)
 
-        if len(cards_with_output) > 0:
-            return cards_with_output[0]
-        return -1
-        
-    def get_agent_plays(self, green_card: str) -> list[str]:
-        agent_plays = []
-        for i, agent in enumerate(self.agent_programs):
-            if i == self.current_judge_index:
-                continue
+    def get_agent_play(self, agent: str, hand: list[str], green_card: str):
+        print(f"{agent} is making a decision...")
+        agent_program = agent.split("-")[1]
+        formatted_hand = self.format_hand(hand)
+        info = formatted_hand + " " + green_card
 
-            hand = self.agent_hands[f"{i}-{agent}"]
-            hand_arg = str(",".join(hand))
+        proc = subprocess.Popen(["python3", agent_program],
+                              stdin=subprocess.PIPE,
+                              stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE,
+                              text=True)
+        stdout, _ = proc.communicate(info)
+        play = stdout.strip().lower()
+        while play not in hand:
+            proc = subprocess.Popen(["python3", agent_program],
+                                  stdin=subprocess.PIPE,
+                                  stdout=subprocess.PIPE,
+                                  stderr=subprocess.PIPE,
+                                  text=True)
+            stdout, _ = proc.communicate(info)
+            play = stdout.strip().lower()
+        self.agent_hands[agent].remove(play)
+        return agent, play
 
-            agent_play = subprocess.run(["python3", agent, hand_arg, green_card],
-                                        capture_output=True, text=True)
-            agent_play = agent_play.stdout.strip().lower()
-
-            if agent_play not in hand:
-                closest_output = self.get_closest_output(hand_arg.split(","), agent_play)
-                while closest_output == -1:
-                    agent_play = subprocess.run(["python3", agent, hand_arg, green_card],
-                                                capture_output=True, text=True)
-                    agent_play = agent_play.stdout.strip().lower()
-                    closest_output = self.get_closest_output(hand_arg.split(","), agent_play)
-
-                agent_plays.append([f"{i}-{agent}", closest_output])
-                self.agent_hands[self.agents[i]].remove(closest_output)
-            else:
-                agent_plays.append([f"{i}-{agent}", agent_play])
-                self.agent_hands[self.agents[i]].remove(agent_play)
-
+    def get_agent_plays(self, green_card: str):
+        agent_plays = [self.get_agent_play(agent, hand, green_card) for agent, hand in self.agent_hands.items() if agent != self.current_judge]
         return agent_plays
 
-    def get_winning_results(self, agent_plays: list[str], green_card: str) -> list[str | int]:
+    def get_winning_results(self, agent_plays, green_card: str):
+        print(f"{self.current_judge} is judging...")
         cards_played = [card for _, card in agent_plays]
-        cards_played_arg = str(",".join(cards_played))
+        formatted_cards_played = self.format_hand(cards_played)
+        info = formatted_cards_played + " " + green_card
 
-        winning_card = subprocess.run(["python3",
-                                       self.agent_programs[self.current_judge_index],
-                                       cards_played_arg,
-                                       green_card],
-                                      capture_output=True, text=True)
-        winning_card = winning_card.stdout.strip().lower()
-
-        if winning_card not in cards_played:
-            winning_card = self.get_closest_output(cards_played_arg.split(","), winning_card)
-            while winning_card == -1:
-                winning_card = subprocess.run(["python3",
-                                               self.agent_programs[self.current_judge_index],
-                                               cards_played_arg,
-                                               green_card],
-                                              capture_output=True, text=True)
-                winning_card = winning_card.stdout.strip().lower()
-                winning_card = self.get_closest_output(cards_played_arg.split(","), winning_card)
+        proc = subprocess.Popen(["python3", self.agent_programs[self.current_judge_index]],
+                                stdin=subprocess.PIPE,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE,
+                                text=True)
+        winning_card, _ = proc.communicate(info)
+        winning_card = winning_card.rstrip().lower()
+        while winning_card not in cards_played:
+            proc = subprocess.Popen(["python3", self.agent_programs[self.current_judge_index]],
+                                    stdin=subprocess.PIPE,
+                                    stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE,
+                                    text=True)
+            winning_card, _ = proc.communicate(info)
+            winning_card = winning_card.rstrip().lower()
 
         winning_agent = ""
         for agent, play in agent_plays:
@@ -134,7 +128,7 @@ class Driver():
                 winning_agent = agent
                 self.agent_scores[agent] += 1
                 break
-        return [winning_agent, winning_card, cards_played_arg]
+        return [winning_agent, winning_card, cards_played]
 
     def play_round(self) -> None:
         """
@@ -146,7 +140,7 @@ class Driver():
         current judge index gets assigned to the next agent in the list with 
         rotation.
         """
-        green_card = self.green_deck.draw_card()
+        green_card = self.green_deck.draw_card().lower()
         agent_plays = self.get_agent_plays(green_card)
         winning_agent, winning_card, cards_played = self.get_winning_results(agent_plays, green_card)
 
@@ -157,6 +151,7 @@ class Driver():
                    f"Cards Played: {cards_played}\n")
         print(results)
         self.current_judge_index = (self.current_judge_index + 1) % self.player_count
+        self.current_judge = self.agents[self.current_judge_index]
 
     def print_scores(self, scores):
         print("Agent\t\t\tScore")
