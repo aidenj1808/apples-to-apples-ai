@@ -1,6 +1,6 @@
 JUDGE_STYLES = ["Default", "Contrarian", "Funny", "Edgy"]
-MAX_CARDS = 4
-TRAIN = True
+MAX_CARDS = 7
+TRAIN = False
 
 import word_associations as wrd
 import sys
@@ -18,12 +18,8 @@ the red card most similar to the green card for that round.
 
 class State:
 
-    def __init__(self, num_players, hand_size, cards_hand, cards_played=None):
-        self.num_players = num_players
-        self.hand_size = hand_size
-        self.cards_played = cards_played
-        self.cards_hand = cards_hand
-        
+    def __init__(self, cards_hand):
+        self.cards_hand = cards_hand   
 
     def __hash__(self):
         return hash(str(self))
@@ -35,57 +31,49 @@ class State:
         return not(self == other)
     
     def __str__(self):
-        return f'{self.num_players} players; {self.hand_size} cards; {self.cards_hand} in hand'
+        return f'{self.cards_hand}'
 
     def __repr__(self):
         return str(self)
 
-class Agent:
+class Policy:
 
-    class Policy:
-
-        def __init__(self, reds, greens, num_players, hand_size):
-            self.reds = reds
-            self.greens = greens
-            self.num_players = num_players
-            self.hand_size = hand_size
-
-            self.red_combs = list(itertools.combinations(self.reds, self.hand_size))
-            self.red_combs = [list(combo) for combo in self.red_combs]
-            for i in self.red_combs:
-                i.sort()
-            #for every green card, generate a dict of every red card which has
-            #a dictionary of all the states and the value of playing said red
-            #card at that state
-
-            self.policy = {f'{green}': {f'{red}': {State(self.num_players, self.hand_size, hand): 0. for hand in self.red_combs} for red in self.reds} for green in self.greens}
-            
-
-        def update(self, prev_green, new_green, red, prev_hand, new_hand, reward=0., step=1., discount=1.):
-
-            state = State(self.num_players, self.hand_size, new_hand)
-            value_hand = []
-            for card in new_hand:
-                value_hand.append(self.policy[new_green][card][state])
-            best = value_hand[np.argmax(value_hand)]
-            
-
-            Q = step*(reward + discount*best - self.policy[prev_green][red][State(self.num_players, self.hand_size, prev_hand)])
-
-            self.policy[prev_green][red][State(self.num_players, self.hand_size, prev_hand)] += Q
-            
-
-
-        def get_value(self, green, red, hand):
-            return self.policy[green][red][State(self.num_players, self.hand_size, hand)]
+    def __init__(self):
+        #Store value of each action-state pair
+        #dict of green cards with each dict value being a dict of the hand (state)
+        #then value of playing each card in hand
+        self.policy = {}
         
-        def get_best_card(self, green, hand):
-            state = State(self.num_players, self.hand_size, hand)
-            value_hand = []
-            for card in hand:
-                value_hand.append(self.policy[green][card][state])
-            
-            return hand[np.argmax(value_hand)]
+
+    #Assume hand is passed as sorted list
+    def update(self, prev_green, next_green, red, prev_hand, new_hand, reward=0., step=1., discount=1.):
+
+        next_state = State(new_hand)
+        prev_state = State(prev_hand)
+        value_hand = []
+
+        for card in new_hand:
+            value_hand.append(self.policy.setdefault(next_green, {}).setdefault(next_state, {}).setdefault(card, 0.))
+        best = value_hand[np.argmax(value_hand)]
+        
+
+        Q = step*(reward + discount*best - self.policy[prev_green][prev_state][red])
+
+        self.policy[prev_green][prev_state][red] += Q
+        
+
+    def get_value(self, green, red, hand):
+        return self.policy[green][State(hand)][red]
+    
+    def get_best_card(self, green, hand):
+        state = State(hand)
+        value_hand = []
+        for card in hand:
+            value_hand.append(self.policy[green][state][card])
+        
+        return hand[np.argmax(value_hand)]
+    
+class Agent:
             
 
     def __init__(self, nlp, judge_style="Default"):
@@ -97,8 +85,11 @@ class Agent:
         self.judge_style = Judge(judge_style, self.nlp)
         
 
-    def init_policy(self, reds, greens, num_players, hand_size):
-        self.value_func = self.Policy(reds, greens, num_players, hand_size)
+    def init_policy(self, filename=None):
+        if filename is None:
+            self.value_func = Policy()
+        else:
+            pass
 
     #Add card to hand
     def add_card(self):
@@ -253,21 +244,15 @@ if __name__ == '__main__':
     nlp = spacy.load("NLP")
     agent = Agent(nlp)
 
-     #Number of points needed to win
-    WINPOINT = int(sys.argv[2])
-    #Number of players playing
-    NUM_PLAYERS = int(sys.argv[1])
-
-    reds = wrd.read_words_from_file(sys.argv[4])
-    greens = wrd.read_words_from_file(sys.argv[3])
-
-    agent.init_policy(reds, greens, NUM_PLAYERS, MAX_CARDS)
+    agent.init_policy()
     #print(agent.value_func.policy['Loud']["Hitler"])
 
-    if TRAIN:
-        print("Training Starting...")
-        agent.train(float(sys.argv[5]), reds, greens, WINPOINT, NUM_PLAYERS)
-        print(agent.games_played, agent.wins, agent.game_wins)
+    # if TRAIN:
+    #     print("Training Starting...")
+    #     agent.train(float(sys.argv[5]), reds, greens, WINPOINT, NUM_PLAYERS)
+    #     print(agent.games_played, agent.wins, agent.game_wins)
+
+    
 
     agent.add_card()
 

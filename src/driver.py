@@ -104,6 +104,10 @@ class Driver():
                 agent_plays.append([f"{i}-{agent}", agent_play])
                 self.agent_hands[self.agents[i]].remove(agent_play)
 
+            if agent == "RLAgent.py":
+                subprocess.run(["python3", agent, agent_play, green_card, ], text=True)
+
+
         return agent_plays
 
     def get_winning_results(self, agent_plays: list[str], green_card: str) -> list[str | int]:
