@@ -68,6 +68,7 @@ class Driver():
 
         self.initialize_cards()
 
+
     def format_hand(self, hand: list[str]) -> str:
         hand = [card.replace(" ", "_") for card in hand]
         return ",".join(hand)
