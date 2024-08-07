@@ -38,8 +38,9 @@ def agent_function(hand: list[str], green_card: str):
     return card_scores_sorted[0][0]
 
 def main():
-    hand = sys.argv[1].split(',')
-    green_card = " ".join(sys.argv[2:])
+    hand, green_card = sys.stdin.read().strip().split(" ", 1)
+    hand = hand.split(",")
+    hand = [card.replace("_", " ") for card in hand]
     play = agent_function(hand, green_card)
     print(play)
 

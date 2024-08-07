@@ -1,5 +1,7 @@
+from asyncio.subprocess import PIPE
 import sys
 import subprocess
+import asyncio
 from traceback import format_exc
 from game import Deck
 
@@ -72,56 +74,59 @@ class Driver():
         hand = [card.replace(" ", "_") for card in hand]
         return ",".join(hand)
 
-    def get_agent_play(self, agent: str, hand: list[str], green_card: str):
-        print(f"{agent} is making a decision...")
+    async def get_agent_play(self, agent: str, hand: list[str], green_card: str) -> tuple[str, str]:
+        print(f"{agent} making decision...")
         agent_program = agent.split("-")[1]
         formatted_hand = self.format_hand(hand)
         info = formatted_hand + " " + green_card
+        info = info.encode()
+        cmd = f"python3 {agent_program}"
 
-        proc = subprocess.Popen(["python3", agent_program],
-                              stdin=subprocess.PIPE,
-                              stdout=subprocess.PIPE,
-                              stderr=subprocess.PIPE,
-                              text=True)
+        proc = await asyncio.create_subprocess_shell(
+            cmd,
+            stdout=PIPE,
+            stderr=PIPE,
+            stdin=PIPE)
 
-        stdout, _ = proc.communicate(info)
-        play = stdout.strip().lower()
+        stdout, _ = await proc.communicate(info)
+        play = stdout.decode().rstrip().lower()
         while play not in hand:
-            proc = subprocess.Popen(["python3", agent_program],
-                                  stdin=subprocess.PIPE,
-                                  stdout=subprocess.PIPE,
-                                  stderr=subprocess.PIPE,
-                                  text=True)
-            stdout, _ = proc.communicate(info)
-            play = stdout.strip().lower()
+            proc = await asyncio.create_subprocess_shell(
+                cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                stdin=PIPE)
+            stdout, _ = await proc.communicate(info)
+            play = stdout.decode().rstrip().lower()
+
         self.agent_hands[agent].remove(play)
         return agent, play
 
-    def get_agent_plays(self, green_card: str):
-        agent_plays = [self.get_agent_play(agent, hand, green_card) for agent, hand in self.agent_hands.items() if agent != self.current_judge]
-        return agent_plays
+    async def get_agent_plays(self, green_card: str):
+        result = await asyncio.gather(*[self.get_agent_play(agent, hand, green_card) for agent, hand in self.agent_hands.items() if agent != self.current_judge])
+        return result
 
     def get_winning_results(self, agent_plays, green_card: str):
-        print(f"{self.current_judge} is judging...")
         cards_played = [card for _, card in agent_plays]
         formatted_cards_played = self.format_hand(cards_played)
         info = formatted_cards_played + " " + green_card
 
+        print(f"{self.agent_programs[self.current_judge_index]} judging...")
         proc = subprocess.Popen(["python3", self.agent_programs[self.current_judge_index]],
-                                stdin=subprocess.PIPE,
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE,
+                                stdout=PIPE,
+                                stderr=PIPE,
+                                stdin=PIPE,
                                 text=True)
 
-        winning_card, _ = proc.communicate(info)
+        winning_card, _  = proc.communicate(info)
         winning_card = winning_card.rstrip().lower()
         while winning_card not in cards_played:
             proc = subprocess.Popen(["python3", self.agent_programs[self.current_judge_index]],
-                                    stdin=subprocess.PIPE,
-                                    stdout=subprocess.PIPE,
-                                    stderr=subprocess.PIPE,
+                                    stdout=PIPE,
+                                    stderr=PIPE,
+                                    stdin=PIPE,
                                     text=True)
-            winning_card, _ = proc.communicate(info)
+            winning_card, _  = proc.communicate(info)
             winning_card = winning_card.rstrip().lower()
 
         winning_agent = ""
@@ -143,7 +148,7 @@ class Driver():
         rotation.
         """
         green_card = self.green_deck.draw_card().lower()
-        agent_plays = self.get_agent_plays(green_card)
+        agent_plays = asyncio.run(self.get_agent_plays(green_card))
         winning_agent, winning_card, cards_played = self.get_winning_results(agent_plays, green_card)
 
         results = (f"Winning Agent: {winning_agent}\n"
