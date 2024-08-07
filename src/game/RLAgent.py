@@ -33,6 +33,7 @@ class State:
     def __str__(self):
         return f'{self.cards_hand}'
 
+
     def __repr__(self):
         return str(self)
 
@@ -90,6 +91,7 @@ class Agent:
             self.value_func = Policy()
         else:
             pass
+
 
     #Add card to hand
     def add_card(self):
@@ -253,6 +255,7 @@ if __name__ == '__main__':
     #     print(agent.games_played, agent.wins, agent.game_wins)
 
     
+
 
     agent.add_card()
 
