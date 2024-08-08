@@ -2,7 +2,6 @@ JUDGE_STYLES = ["Default", "Contrarian", "Funny", "Edgy"]
 MAX_CARDS = 7
 TRAIN = False
 
-import word_associations as wrd
 import sys
 import numpy as np
 import spacy
@@ -25,7 +24,7 @@ class State:
         return hash(str(self))
     
     def __eq__(self, other):
-        return (self.num_players, self.hand_size, self.cards_hand) == (other.num_players, other.hand_size, other.cards_hand)
+        return self.cards_hand == other.cards_hand
     
     def __ne__(self, other):
         return not(self == other)
@@ -58,8 +57,8 @@ class Policy:
         best = value_hand[np.argmax(value_hand)]
         
 
-        Q = step*(reward + discount*best - self.policy[prev_green][prev_state][red])
-
+        Q = step*(reward + discount*best - self.policy.setdefault(prev_green, {}).setdefault(prev_state, {}).setdefault(best, 0.))
+        self.policy[prev_green][prev_state].setdefault(red, 0.0)
         self.policy[prev_green][prev_state][red] += Q
         
 
@@ -70,7 +69,7 @@ class Policy:
         state = State(hand)
         value_hand = []
         for card in hand:
-            value_hand.append(self.policy[green][state][card])
+            value_hand.append(self.policy.setdefault(green, {}).setdefault(state, {}).setdefault(card, 0.))
         
         return hand[np.argmax(value_hand)]
     
@@ -94,24 +93,15 @@ class Agent:
 
 
     #Add card to hand
-    def add_card(self):
-
-        while len(self.hand) < MAX_CARDS:
-
-            card_name = input("Please enter a red card to add to my hand: ")
-            self.hand.append(card_name)
+    def add_card(self, red_card: str):
+        self.hand.append(red_card)
 
 
     #Play best card given assessment of judges
-    def play_card(self, green_card, judge_vals, judge_ind):
-        
-        judge_type = self.judges[np.argmax(judge_vals[judge_ind])]
-
-        card = judge_type.evaluate(self.hand, green)
-
-        self.hand.remove(card)
-
-        return card
+    def play_card(self, green_card):
+        agent_best = self.value_func.get_best_card(green_card, self.hand)
+        self.hand.remove(agent_best)
+        return agent_best
     
     #Remove cards played from pool of available cards
     def remove_from_pool(self, reds, green):
