@@ -29,7 +29,7 @@ class Driver():
         self.current_judge = self.agents[self.current_judge_index]
         self.agent_scores = {f"{i}-{agent}": 0 for i, agent in enumerate(self.agent_programs)}
 
-        self.rl_agent = Agent(spacy.load("en_core_web_lg"))
+        self.rl_agent = Agent()
         self.rl_agent.init_policy()
         self.rl_agent_name = [agent for agent in self.agents if "RLAgent.py" in agent][0]
         

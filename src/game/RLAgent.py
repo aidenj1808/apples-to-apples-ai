@@ -1,6 +1,7 @@
 #imports
 import numpy as np
 import csv
+import ast
 
 
 class State:
@@ -103,6 +104,8 @@ class Policy:
         Q = step*(reward + discount*best - self.policy.setdefault(prev_green, {}).setdefault(prev_state, {}).setdefault(best, 0.))
         self.policy[prev_green][prev_state].setdefault(red, 0.0)
         self.policy[prev_green][prev_state][red] += Q
+
+        print(prev_green, next_green, prev_hand, new_hand, red)
         
 
     def get_value(self, green, red, hand):
@@ -132,7 +135,7 @@ class Policy:
                         green = row[0]
 
                     else:
-                        state = State(list(row[0]))
+                        state = State(ast.literal_eval(row[0]))
                         red = row[1:]
 
                         temp = {string.split('=')[0]:string.split('=')[1] for string in red}
@@ -142,24 +145,23 @@ class Policy:
         except Exception as e:
             print("Could not load policy file",e)
             raise e
-
+        
 
     def save(self):
 
         with open('policy.csv', 'w', newline='') as csvfile:
             csvwriter = csv.writer(csvfile)
-
             for green in self.policy:
                 csvwriter.writerow([green])
                 
                 for state in self.policy[green]:
                     export_string = [str(state.cards_hand)]
+        
                     for card in state.cards_hand:
                         export_string.append(f'{card}={self.policy[green][state][card]}')
                     
                     csvwriter.writerow(export_string)
-
-
+            
 
 class Agent:
     """
