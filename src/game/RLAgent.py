@@ -7,6 +7,7 @@ import numpy as np
 import spacy
 import itertools
 import time
+import csv
 
 '''
 Class that represents the agent playing apples to apples. Should be able to 
@@ -18,7 +19,9 @@ the red card most similar to the green card for that round.
 class State:
 
     def __init__(self, cards_hand):
-        self.cards_hand = cards_hand   
+        hand = cards_hand.copy()
+        hand.sort()
+        self.cards_hand = hand
 
     def __hash__(self):
         return hash(str(self))
@@ -52,6 +55,9 @@ class Policy:
         prev_state = State(prev_hand)
         value_hand = []
 
+        prev_green = prev_green.lower()
+        next_green = next_green.lower()
+
         for card in new_hand:
             value_hand.append(self.policy.setdefault(next_green, {}).setdefault(next_state, {}).setdefault(card, 0.))
         best = value_hand[np.argmax(value_hand)]
@@ -72,7 +78,52 @@ class Policy:
             value_hand.append(self.policy.setdefault(green, {}).setdefault(state, {}).setdefault(card, 0.))
         
         return hand[np.argmax(value_hand)]
+
+
+    def load(self):
+
+        try:
+            with open('policy.csv', 'r', newline='') as csvfile:
+                csvreader = csv.reader(csvfile)
+
+                green = ''
+                state = None
+                red = []
+
+                for row in csvreader:
+                    if len(row) == 1:
+                        green = row[0]
+
+                    else:
+                        state = State(list(row[0]))
+                        red = row[1:]
+
+                        temp = {string.split('=')[0]:string.split('=')[1] for string in red}
+                        self.policy.setdefault(green, {}).update({state: temp})
+                        
+
+        except Exception as e:
+            print("Could not load policy file",e)
+            raise e
+
+
+    def save(self):
+
+        with open('policy.csv', 'w', newline='') as csvfile:
+            csvwriter = csv.writer(csvfile)
+
+            for green in self.policy:
+                csvwriter.writerow([green])
+                
+                for state in self.policy[green]:
+                    export_string = [str(state.cards_hand)]
+                    for card in state.cards_hand:
+                        export_string.append(f'{card}={self.policy[green][state][card]}')
+                    
+                    csvwriter.writerow(export_string)
+
     
+
 class Agent:
             
 
@@ -85,12 +136,16 @@ class Agent:
         self.judge_style = Judge(judge_style, self.nlp)
         
 
-    def init_policy(self, filename=None):
-        if filename is None:
-            self.value_func = Policy()
-        else:
-            pass
+    def init_policy(self, filename="policy.csv"):
 
+        self.value_func = Policy()
+
+
+        try:
+            self.value_func.load()
+
+        except Exception as e:
+            print("Existing policy could not be found\nA new one will be initialized\n")
 
     #Add card to hand
     def add_card(self, red_card: str):

@@ -245,6 +245,7 @@ def main():
         n_games = int(arguments[-1])
         driver = Driver(arguments[1: -1], n_games)
         driver.main_loop()
+        driver.rl_agent.value_func.save()
     except Exception as e:
         print("Error", e)
         print(format_exc())
