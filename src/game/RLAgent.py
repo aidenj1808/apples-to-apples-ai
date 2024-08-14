@@ -1,24 +1,28 @@
-JUDGE_STYLES = ["Default", "Contrarian", "Funny", "Edgy"]
-MAX_CARDS = 7
-TRAIN = False
-
-import sys
+#imports
 import numpy as np
-import spacy
-import itertools
-import time
+import csv
+import ast
 
-'''
-Class that represents the agent playing apples to apples. Should be able to 
-draw cards, play red cards when a regular player, and judge red cards when a
-judge. Requires a judge function in order to judge cards. By default, it picks
-the red card most similar to the green card for that round.
-'''
 
 class State:
+    """
+    Class that represents a game state based on the cards in a hand supplied.
+
+    ...
+
+    Attributes
+    ----------
+    cards_hand : list of str
+        a sorted copy of the hand supplied during initialization
+
+    """
 
     def __init__(self, cards_hand):
-        self.cards_hand = cards_hand   
+        hand = cards_hand.copy()
+        hand.sort()
+        self.cards_hand = hand
+
+    #Below methods are required for dictionary use
 
     def __hash__(self):
         return hash(str(self))
@@ -32,11 +36,48 @@ class State:
     def __str__(self):
         return f'{self.cards_hand}'
 
-
     def __repr__(self):
         return str(self)
 
 class Policy:
+    """
+    Class that represents a policy or state-action pair value function. Keeps
+    track of an agent's understanding of the value of state-action value pairs.
+    Includes methods that find the best action to take from a given state, update
+    values, and save/load from a csv file
+
+    ...
+
+    Attributes
+    ----------
+    policy : dict
+        a dictionary of dictionaries of dictionaries. From outside to inside,
+        policy keeps track of green cards, states, and then the value of playing
+        a red card from that state.
+
+    Methods
+    -------
+    update(prev_green, next_green, red, prev_hand, new_hand, reward, step, discount):
+        use Q-learning to update the policy. Uses the green card from the previous
+        round, the green card from the next round, the red card the agent just
+        played, the agent's hand from the previous round, the agent's hand from
+        the next round, and then values for the reward, step-size, and discount.
+
+    get_value(green, red, hand):
+        return the value of playing a red card given the hand its played from and
+        the green card it will be played with.
+
+    get_best_card(green, hand):
+        return the highest value red card to play given a hand and the green card
+        currently in play.
+
+    load():
+        attempt to load a policy from a file called "policy.csv"
+
+    save():
+        save the currently learned policy to a file called "policy.csv"
+
+    """
 
     def __init__(self):
         #Store value of each action-state pair
@@ -52,6 +93,9 @@ class Policy:
         prev_state = State(prev_hand)
         value_hand = []
 
+        prev_green = prev_green.lower()
+        next_green = next_green.lower()
+
         for card in new_hand:
             value_hand.append(self.policy.setdefault(next_green, {}).setdefault(next_state, {}).setdefault(card, 0.))
         best = value_hand[np.argmax(value_hand)]
@@ -60,6 +104,8 @@ class Policy:
         Q = step*(reward + discount*best - self.policy.setdefault(prev_green, {}).setdefault(prev_state, {}).setdefault(best, 0.))
         self.policy[prev_green][prev_state].setdefault(red, 0.0)
         self.policy[prev_green][prev_state][red] += Q
+
+        print(prev_green, next_green, prev_hand, new_hand, red)
         
 
     def get_value(self, green, red, hand):
@@ -72,25 +118,102 @@ class Policy:
             value_hand.append(self.policy.setdefault(green, {}).setdefault(state, {}).setdefault(card, 0.))
         
         return hand[np.argmax(value_hand)]
-    
-class Agent:
-            
 
-    def __init__(self, nlp, judge_style="Default"):
-        self.hand = []
-        self.points = 0
-        self.nlp = nlp
-        self.removed = {'R':[], 'G':[]}
-        self.judges = [Judge(i, self.nlp) for i in JUDGE_STYLES]
-        self.judge_style = Judge(judge_style, self.nlp)
+
+    def load(self):
+
+        try:
+            with open('policy.csv', 'r', newline='') as csvfile:
+                csvreader = csv.reader(csvfile)
+
+                green = ''
+                state = None
+                red = []
+
+                for row in csvreader:
+                    if len(row) == 1:
+                        green = row[0]
+
+                    else:
+                        state = State(ast.literal_eval(row[0]))
+                        red = row[1:]
+
+                        temp = {string.split('=')[0]:string.split('=')[1] for string in red}
+                        self.policy.setdefault(green, {}).update({state: temp})
+                        
+
+        except Exception as e:
+            print("Could not load policy file",e)
+            raise e
         
 
-    def init_policy(self, filename=None):
-        if filename is None:
-            self.value_func = Policy()
-        else:
-            pass
+    def save(self):
 
+        with open('policy.csv', 'w', newline='') as csvfile:
+            csvwriter = csv.writer(csvfile)
+            for green in self.policy:
+                csvwriter.writerow([green])
+                
+                for state in self.policy[green]:
+                    export_string = [str(state.cards_hand)]
+        
+                    for card in state.cards_hand:
+                        export_string.append(f'{card}={self.policy[green][state][card]}')
+                    
+                    csvwriter.writerow(export_string)
+            
+
+class Agent:
+    """
+    Class that represents a player in a game of Apples to Apples. This agent
+    uses reinforcement learning to learn from playing what cards are best to
+    play based on the cards in its hand compared to the green card currently
+    in play. Should facilitate all the actions a player can take. Uses Q-learning.
+
+    ...
+
+    Attributes
+    ----------
+    hand : list
+        list of strings representing the agent's hand
+    points : int
+        how many points it currently has in the round
+    value_func :
+        keeps track of an agent's percieved value of state-action pairs
+
+        
+    Methods
+    -------
+    init_policy(filename):
+        initialize agent policy. By default it attempts to load in a csv file
+        called "policy.csv". If this fails, a new policy is initialized
+
+    add_card(red_card):
+        Add a new red card to the agent's hand
+
+    play_card(green_card):
+        play a red card from the agent's hand based on the green card supplied
+        and its understanding of its value
+
+    """    
+            
+
+    def __init__(self):
+        self.hand = []
+        self.points = 0
+        self.removed = {'R':[], 'G':[]}
+        
+
+    def init_policy(self, filename="policy.csv"):
+
+        self.value_func = Policy()
+
+
+        try:
+            self.value_func.load()
+
+        except Exception as e:
+            print("Existing policy could not be found\nA new one will be initialized\n")
 
     #Add card to hand
     def add_card(self, red_card: str):
@@ -103,198 +226,3 @@ class Agent:
         self.hand.remove(agent_best)
         return agent_best
     
-    #Remove cards played from pool of available cards
-    def remove_from_pool(self, reds, green):
-
-        for i in reds:
-
-            self.removed['R'].append(i)
-
-        self.removed['G'].append(green)
-
-    #Find most likely judge for given card
-    def find_max_judge(self, red, green):
-        return np.argmax([judge.judge(red, green) for judge in self.judges])
-
-    def train(self, train_time, reds, greens, num_points, num_players):
-
-        start_time = time.time()
-        rng = np.random.default_rng()
-
-        self.wins = 0
-        self.game_wins = 0
-        self.games_played = 0
-
-        while time.time() - start_time < train_time:
-
-            while len(self.hand) < MAX_CARDS:
-                candidate = None
-                while candidate is None or candidate in self.hand:
-                    candidate = reds[int(rng.uniform(0,len(reds)))]
-                self.hand.append(candidate)
-
-            #All player points and player judge assumptions
-            player_pts = [0 for i in range(num_players)]
-            #player_judge = [[0 for j in range(len(JUDGE_STYLES))] for i in range(int(sys.argv[1]) - 1)]
-            #j_ind = 0
-
-            self.hand.sort()
-            roundNum = 0
-            next_green = greens[int(rng.uniform(0,len(greens)))]
-            while num_points not in player_pts:
-                green_card = next_green
-
-                round_hand = [reds[int(rng.uniform(0,len(reds)))] for i in range(num_players - 1)]
-                agent_best = self.value_func.get_best_card(green_card, self.hand)
-                round_hand.append(agent_best)
-
-                round_hand_nlp = []
-
-                for card in round_hand:
-                    round_hand_nlp.append(self.nlp(card).similarity(self.nlp(green_card)))
-
-                winner = np.argmax(round_hand_nlp)
-                best = round_hand[np.argmax(round_hand_nlp)]
-
-                player_pts[winner] += 1
-
-                if best == self.value_func.get_best_card(green_card, self.hand):
-                    self.wins+=1
-
-                reward = 1. if agent_best == best else 0.                
-
-                prev_hand = self.hand.copy()
-                self.hand.remove(agent_best)
-                candidate = self.hand[0]
-                while candidate in self.hand:
-                    candidate = reds[int(rng.uniform(0,len(reds)))]
-                self.hand.append(candidate)
-
-                self.hand.sort()
-                next_green = greens[int(rng.uniform(0,len(greens)))]
-
-                self.value_func.update(green_card, next_green, best, prev_hand, self.hand, reward=reward)
-                roundNum += 1
-
-                print(f'Round {roundNum} of game {self.games_played}')
-
-
-
-
-            print(f"\nGAMEOVER - Player {player_pts.index(WINPOINT) + 1} wins!\n")
-            self.hand = []
-            self.games_played+=1
-            if player_pts.index(WINPOINT) == 0:
-                self.game_wins += 1
-            
-
-
-#Contains judging styles
-class Judge:
-
-    def __init__(self, name, nlp):
-        self.name = name
-        self.nlp = nlp
-
-        match name:
-            case "Default":
-                self.judge = self.default
-
-            case "Contrarian":
-                self.judge = self.contrarian
-
-            case "Funny":
-                self.judge = self.funny
-
-            case "Edgy":
-                self.judge = self.edgy
-
-    def default(self, red, green):
-        return self.nlp(green).similarity(self.nlp(red))
-    
-    def contrarian(self, red, green):
-        return -self.nlp(green).similarity(self.nlp(red))
-    
-    def funny(self, red, green):
-        return self.nlp("Funny").similarity(self.nlp(f'{green} {red}'))
-    
-    def edgy(self, red, green):
-        return self.nlp("Satire").similarity(self.nlp(f'{green} {red}'))
-    
-    def evaluate(self, reds, green):
-        return reds[np.argmax([self.judge(i, green) for i in reds])]
-    
-
-
-if __name__ == '__main__':
-
-    if len(sys.argv) < 5:
-        print("USAGE: ./agent #Players #Points GreenExt RedExt [TrainingTime]")
-        exit()
-
-    #load NLP
-    nlp = spacy.load("NLP")
-    agent = Agent(nlp)
-
-    agent.init_policy()
-    #print(agent.value_func.policy['Loud']["Hitler"])
-
-    # if TRAIN:
-    #     print("Training Starting...")
-    #     agent.train(float(sys.argv[5]), reds, greens, WINPOINT, NUM_PLAYERS)
-    #     print(agent.games_played, agent.wins, agent.game_wins)
-
-    
-
-
-    agent.add_card()
-
-    #All player points and player judge assumptions
-    player_pts = [0 for i in range(int(sys.argv[1]))]
-    player_judge = [[0 for j in range(len(JUDGE_STYLES))] for i in range(int(sys.argv[1]) - 1)]
-    j_ind = 0
-
-   
-
-    roundNum = 0
-    while WINPOINT not in player_pts:
-        roundNum += 1
-        print(f"\n###ROUND {roundNum}###\n")
-
-        role = input("What role am I playing this round? 0 - Player; else - Judge: \n")
-
-        if not int(role):
-
-            green = input("Green card: ")
-
-            red = agent.play_card(green, player_judge, j_ind)
-            print(f"I play {red}")
-
-            winner = input(f"Which player won (assume I am player 1/{int(sys.argv[1])})? ")
-
-            roundCards = []
-            for i in range(1,NUM_PLAYERS-1):
-                roundCards.append(input(f"\nWhich card was played by another player? "))
-
-
-            player_pts[int(winner) - 1] += 1
-            player_judge[j_ind][agent.find_max_judge(roundCards[int(winner) - 2], green)] += 1
-            j_ind += 1
-            if j_ind == NUM_PLAYERS-1:
-                j_ind = 0
-
-            agent.add_card()
-
-        else:
-            green = input("Green card: ")
-            roundCards = []
-
-            for i in range(1,NUM_PLAYERS):
-                roundCards.append(input(f"Enter player red card: "))
-
-            print(f"Picked: {roundCards[0]}")
-            winner = input(f"\nWhich player won (assume I am player 1/{int(sys.argv[1])})? ")
-            player_pts[int(winner) - 1] += 1
-
-
-    print(f"\nGAMEOVER - Player {player_pts.index(WINPOINT) + 1} wins!\n")
