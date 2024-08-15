@@ -105,7 +105,7 @@ class Policy:
         self.policy[prev_green][prev_state].setdefault(red, 0.0)
         self.policy[prev_green][prev_state][red] += Q
 
-        print(prev_green, next_green, prev_hand, new_hand, red)
+        # print(prev_green, next_green, prev_hand, new_hand, red)
         
 
     def get_value(self, green, red, hand):
