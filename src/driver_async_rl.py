@@ -109,7 +109,19 @@ class Driver():
 
         stdout, _ = await proc.communicate(info)
         play = stdout.decode().rstrip().lower()
+
+        tries = 0
         while play not in hand:
+            if tries == 5:
+                possible_plays = []
+                for card in hand:
+                    for word in play.split():
+                        if word in card:
+                            possible_plays.append(card)
+                play = possible_plays[0]
+                break
+
+            print(f"\n{agent} Retrying...\nplay: {play}\nhand: {hand}\n")
             proc = await asyncio.create_subprocess_shell(
                 cmd,
                 stdout=PIPE,
@@ -118,6 +130,7 @@ class Driver():
 
             stdout, _ = await proc.communicate(info)
             play = stdout.decode().rstrip().lower()
+            tries += 1
 
         self.agent_hands[agent].remove(play)
         print(f"{agent} is done making decision.")
@@ -157,7 +170,19 @@ class Driver():
 
         winning_card, _ = proc.communicate(info)
         winning_card = winning_card.rstrip().lower()
+
+        tries = 0
         while winning_card not in cards_played:
+            if tries == 5:
+                possible_cards = []
+                for card in cards_played:
+                    for word in winning_card.split():
+                        if word in card:
+                            possible_cards.append(card)
+                play = possible_cards[0]
+                break
+
+            print(f"\n{self.current_judge} Retrying...\nchoice: {winning_card}\ncards played: {cards_played}\n")
             proc = subprocess.Popen(["python3", self.agent_programs[self.current_judge_index]],
                                     stdin=subprocess.PIPE,
                                     stdout=subprocess.PIPE,
@@ -165,6 +190,7 @@ class Driver():
                                     text=True)
             winning_card, _ = proc.communicate(info)
             winning_card = winning_card.rstrip().lower()
+            tries += 1
 
         winning_agent = ""
         for agent, play in agent_plays:
@@ -190,7 +216,7 @@ class Driver():
         agent_plays = asyncio.run(self.get_agent_plays(green_card))
         winning_agent, winning_card, cards_played = self.get_winning_results(agent_plays, green_card)
 
-        results = (f"Winning Agent: {winning_agent}\n"
+        results = (f"\nWinning Agent: {winning_agent}\n"
                    f"Winning Card: {winning_card}\n"
                    f"Judge: {self.agents[self.current_judge_index]}\n"
                    f"Green Card: {green_card}\n"
