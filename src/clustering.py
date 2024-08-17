@@ -59,7 +59,7 @@ class Clustering:
                 #     self.clustering.update({line[0] : line[1]})
                     
                 #else:
-                self.clustering.update({line[0]: line[1]})
+                self.clustering.update({line[0].lower(): line[1]})
 
 #Call script directly with interperter to generate new clustering file
 
@@ -88,8 +88,6 @@ if __name__ == "__main__":
         file.readline()
         for line in file:
             data = line.strip().split(",", 2)
-            if data[0] != "party_set":
-                break
             red_cards.append(data[1])
 
     # List of models https://sbert.net/docs/sentence_transformer/pretrained_models.html
