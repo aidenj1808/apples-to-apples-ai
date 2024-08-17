@@ -3,7 +3,7 @@ import numpy as np
 import csv
 import ast
 import random
-import game.clustering as clust
+import clustering as clust
 
 
 class State:
@@ -81,18 +81,31 @@ class Policy:
 
     """
 
-    def __init__(self):
+    def __init__(self, clusters=10):
         #Store value of each action-state pair
         #dict of green cards with each dict value being a dict of the hand (state)
         #then value of playing each card in hand
         self.policy = {}
+
+        if clusters != 0:
+            self.cluster_map = clust.Clustering(clusters)
+            self.cluster = True
+        else:
+            self.cluster = False
         
 
     #Assume hand is passed as sorted list
     def update(self, prev_green, next_green, red, prev_hand, new_hand, reward=0., step=1., discount=1.):
 
-        next_state = State(new_hand)
-        prev_state = State(prev_hand)
+        if self.cluster:
+            next_state = State([self.cluster_map.get_cluster(card) for card in new_hand])
+            prev_state = State([self.cluster_map.get_cluster(card) for card in prev_hand])
+
+        else:
+
+            next_state = State(new_hand)
+            prev_state = State(prev_hand)
+
         value_hand = []
 
         prev_green = prev_green.lower()

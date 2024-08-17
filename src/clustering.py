@@ -41,7 +41,7 @@ class Clustering:
         self.load(filename)
 
     def get_cluster(self, card : str) -> int:
-        return list(self.clustering.keys())[list(self.clustering.keys()).index(card)]
+        return self.clustering[card]
 
     def get_embedding(self, card : str) -> np.ndarray:
         return self.clustering[self.get_cluster(card)][card]
@@ -113,5 +113,3 @@ if __name__ == "__main__":
         #     csvwriter.writerow([f"CLUSTER{i}", kmeans.cluster_centers_[i]])
         for triple in temp:
             csvwriter.writerow(triple)
-
-    test = Clustering(10)
