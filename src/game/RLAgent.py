@@ -3,6 +3,7 @@ import numpy as np
 import csv
 import ast
 import random
+import game.clustering as clust
 
 
 class State:
@@ -174,7 +175,7 @@ class Policy:
                         export_string.append(f'{card}={self.policy[green][state][card]}')
                     
                     csvwriter.writerow(export_string)
-            
+
 
 class Agent:
     """
