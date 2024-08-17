@@ -2,6 +2,7 @@
 import numpy as np
 import csv
 import ast
+import random
 
 
 class State:
@@ -116,8 +117,20 @@ class Policy:
         value_hand = []
         for card in hand:
             value_hand.append(self.policy.setdefault(green, {}).setdefault(state, {}).setdefault(card, 0.))
+
+        #if more than one state-action pair has the same value, choose randomly
+        #to encourage exploration and fairer judging
+
+        #find the index of the max value state-action pair
+        #then choose randomly from all the state-action pairs that share the
+        #same value
+        max_value = np.argmax(value_hand)
         
-        return hand[np.argmax(value_hand)]
+        max_value_indices = np.nonzero(np.array(value_hand) == value_hand[max_value])[0]
+        ind = random.randint(0,len(max_value_indices))
+        chosen_ind = max_value_indices[ind]
+
+        return hand[chosen_ind]
 
 
     def load(self):
