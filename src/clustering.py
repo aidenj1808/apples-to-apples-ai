@@ -1,5 +1,6 @@
 import numpy as np
 import csv
+import toolz
 
 class Clustering:
     """
@@ -50,24 +51,67 @@ class Clustering:
         if filename is None:
             filename = f"{self.n_clusters}_clusters.csv"
 
-        with open(filename, 'r') as csvfile:
+        with open(filename, 'r', newline='') as csvfile:
             csvreader = csv.reader(csvfile)
 
-            clust_num = 0
-            temp = {}
-
             for line in csvreader:
-                if line == f"CLUSTER{clust_num}":
-                    if clust_num != 0:
-                        self.clustering.update(f"{clust_num - 1}", temp)
-                    temp.update({"CLUSTER": np.array(line[1], dtype=float)})
-                    clust_num += 1
-                
-                else:
-                    temp.update({line[0]: np.array(line[1:], dtype=float)})
+                # if len(line) == 2:
+                #     self.clustering.update({line[0] : line[1]})
+                    
+                #else:
+                self.clustering.update({line[0]: line[1]})
 
 #Call script directly with interperter to generate new clustering file
 
 #USAGE : python3 clustering.py red_card_file green_card_file num_clusters
 if __name__ == "__main__":
-    pass
+
+    from sentence_transformers import SentenceTransformer
+    from sklearn.cluster import KMeans
+    import sys
+
+    red_card_file = sys.argv[1]
+    green_card_file = sys.argv[2]
+    num_clusters = int(sys.argv[3])
+
+    red_cards = []
+    green_cards = []
+    with open("all_green_cards.csv", newline='') as file:
+        file.readline()
+        for line in file:
+            data = line.strip().split(",", 2)
+            if data[0] != "party_set":
+                break
+            green_cards.append(data[1])
+
+    with open("all_red_cards.csv", newline='') as file:
+        file.readline()
+        for line in file:
+            data = line.strip().split(",", 2)
+            if data[0] != "party_set":
+                break
+            red_cards.append(data[1])
+
+    # List of models https://sbert.net/docs/sentence_transformer/pretrained_models.html
+    model = SentenceTransformer('sentence-transformers/all-mpnet-base-v2')
+    
+    #RED CLUSTERS
+    red_embeddings = model.encode(red_cards)
+
+    red_embeddings = red_embeddings / np.linalg.norm(red_embeddings, axis=1, keepdims=True)
+
+
+    
+    kmeans = KMeans(n_clusters=num_clusters).fit(red_embeddings)
+    
+    temp = zip(red_cards, kmeans.labels_)
+
+    with open(f"{num_clusters}_clusters.csv", 'w', newline='') as csvfile:
+        csvwriter = csv.writer(csvfile)
+
+        # for i in range(num_clusters):
+        #     csvwriter.writerow([f"CLUSTER{i}", kmeans.cluster_centers_[i]])
+        for triple in temp:
+            csvwriter.writerow(triple)
+
+    test = Clustering(10)
