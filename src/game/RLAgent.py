@@ -95,7 +95,7 @@ class Policy:
         
 
     #Assume hand is passed as sorted list
-    def update(self, prev_green, next_green, red, prev_hand, new_hand, reward=0., step=1., discount=1.):
+    def update(self, prev_green, next_green, red, prev_hand, new_hand, reward=0., step=0.5, discount=0.9):
 
         if self.cluster:
             next_state = State([self.cluster_map.get_cluster(card) for card in new_hand])

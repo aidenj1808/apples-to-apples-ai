@@ -5,6 +5,9 @@ from traceback import format_exc
 from game import Deck
 from game.RLAgent import Agent, State, Policy
 
+WIN_REWARD = 1.0
+LOSE_REWARD = -0.5
+
 
 class Driver():
     """
@@ -43,7 +46,8 @@ class Driver():
 
         for _ in range(7):
             # RL
-            self.rl_agent.add_card(self.red_deck.draw_card().lower())
+            if len(self.rl_agent.hand) < 7:
+                self.rl_agent.add_card(self.red_deck.draw_card().lower())
             for agent, hand in self.agent_hands.items():
                 if agent != self.rl_agent_name:
                     hand.append(self.red_deck.draw_card().lower())
@@ -58,7 +62,9 @@ class Driver():
                 hand.append(self.red_deck.draw_card().lower())
 
         # RL
-        self.rl_agent.add_card(self.red_deck.draw_card().lower())
+        if len(self.rl_agent.hand) < 7:
+
+            self.rl_agent.add_card(self.red_deck.draw_card().lower())
 
     def reset_scores(self) -> None:
         """ Resets all agent's scores to 0. """
@@ -193,7 +199,7 @@ class Driver():
 
         next_green_card = self.green_deck.cards[-1]
         rl_agent_play = agent_plays[-1][1]
-        reward = 1.0 if winning_agent == self.rl_agent_name else 0.0
+        reward = WIN_REWARD if winning_agent == self.rl_agent_name else LOSE_REWARD
         self.deal_round_cards()
         if self.current_judge != self.rl_agent_name:
             self.rl_agent.value_func.update(green_card, next_green_card, rl_agent_play, rl_prev_hand, self.rl_agent.hand, reward)
@@ -231,6 +237,7 @@ class Driver():
                     final_results[agent] += 1
                     print(f"{agent} won the game!\n\n")
                     break
+            self.rl_agent.hand = []
             
         final_results = list(sorted(final_results.items(), key=lambda x:x[1], reverse=True))
         print(f"Final Results for {self.n_games} Games:\n")
