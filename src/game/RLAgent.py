@@ -280,4 +280,4 @@ class Agent:
             csvwriter = csv.writer(csvfile)
 
             for i in range(len(self.history)):
-                csvwriter.writerow([f"Game{i+1}", np.average(self.history[i])])
+                csvwriter.writerow([f"Game{i+1}", np.sum(self.history[i])])
