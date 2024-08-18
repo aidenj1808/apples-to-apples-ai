@@ -35,8 +35,7 @@ class Clustering:
 
     """
 
-    def __init__(self, n_clusters : int, filename : str | None = None) -> None:
-        self.n_clusters = n_clusters
+    def __init__(self, filename : str | None = None) -> None:
         self.clustering = {}
         self.load(filename)
 
@@ -49,7 +48,7 @@ class Clustering:
     def load(self, filename : str | None = None) -> None:
 
         if filename is None:
-            filename = f"{self.n_clusters}_clusters.csv"
+            filename = "clusters.csv"
 
         with open(filename, 'r', newline='') as csvfile:
             csvreader = csv.reader(csvfile)
@@ -60,6 +59,8 @@ class Clustering:
                     
                 #else:
                 self.clustering.update({line[0].lower(): line[1]})
+
+        self.num_clust = len(np.unique(np.array(list(self.clustering.values()))))
 
 #Call script directly with interperter to generate new clustering file
 
@@ -73,18 +74,17 @@ if __name__ == "__main__":
     red_card_file = sys.argv[1]
     green_card_file = sys.argv[2]
     num_clusters = int(sys.argv[3])
+    filename = sys.argv[4]
 
     red_cards = []
     green_cards = []
-    with open("all_green_cards.csv", newline='') as file:
+    with open(green_card_file, newline='') as file:
         file.readline()
         for line in file:
             data = line.strip().split(",", 2)
-            if data[0] != "party_set":
-                break
             green_cards.append(data[1])
 
-    with open("all_red_cards.csv", newline='') as file:
+    with open(red_card_file, newline='') as file:
         file.readline()
         for line in file:
             data = line.strip().split(",", 2)
@@ -98,16 +98,26 @@ if __name__ == "__main__":
 
     red_embeddings = red_embeddings / np.linalg.norm(red_embeddings, axis=1, keepdims=True)
 
+    green_embeddings = model.encode(green_cards)
 
+    green_embeddings = green_embeddings / np.linalg.norm(green_embeddings, axis=1, keepdims=True)
     
     kmeans = KMeans(n_clusters=num_clusters).fit(red_embeddings)
     
-    temp = zip(red_cards, kmeans.labels_)
+    temp_red = zip(red_cards, kmeans.labels_)
 
-    with open(f"{num_clusters}_clusters.csv", 'w', newline='') as csvfile:
+    kmeans = KMeans(n_clusters=num_clusters).fit(red_embeddings)
+
+    temp_green = zip(green_cards, kmeans.labels_)
+
+    with open(filename, 'w', newline='') as csvfile:
         csvwriter = csv.writer(csvfile)
 
         # for i in range(num_clusters):
         #     csvwriter.writerow([f"CLUSTER{i}", kmeans.cluster_centers_[i]])
-        for triple in temp:
+        for triple in temp_red:
             csvwriter.writerow(triple)
+
+        for triple in temp_green:
+            csvwriter.writerow(triple)
+

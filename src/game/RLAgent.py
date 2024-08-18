@@ -88,10 +88,12 @@ class Policy:
         self.policy = {}
 
         if clusters != 0:
-            self.cluster_map = clust.Clustering(clusters)
+            self.cluster_map = clust.Clustering()
             self.cluster = True
         else:
             self.cluster = False
+
+        
         
 
     #Assume hand is passed as sorted list
@@ -100,19 +102,18 @@ class Policy:
         if self.cluster:
             next_state = State([self.cluster_map.get_cluster(card) for card in new_hand])
             prev_state = State([self.cluster_map.get_cluster(card) for card in prev_hand])
-            #red = self.cluster_map.get_cluster(red)
+            # red = self.cluster_map.get_cluster(red)
+            prev_green = self.cluster_map.get_cluster(prev_green.lower())
+            next_green = self.cluster_map.get_cluster(next_green.lower())
 
         else:
 
             next_state = State(new_hand)
             prev_state = State(prev_hand)
 
-        value_hand = []
 
-        prev_green = prev_green.lower()
-        next_green = next_green.lower()
-
-        
+            prev_green = prev_green.lower()
+            next_green = next_green.lower() 
 
         best_card = self.get_best_card(next_green, new_hand)
         best_value = self.get_value(next_green, best_card, new_hand)
@@ -139,7 +140,7 @@ class Policy:
         ind = random.randint(0,len(copy_indices)-1)
         chosen_ind = copy_indices[ind]
 
-        return self.policy[green][state][chosen_ind]
+        return self.policy.setdefault(green, {}).setdefault(state, [0. for i in state.cards_hand])[chosen_ind]
     
     def get_best_card(self, green, hand):
         if self.cluster:
@@ -245,7 +246,8 @@ class Agent:
     def __init__(self):
         self.hand = []
         self.points = 0
-        self.removed = {'R':[], 'G':[]}
+
+        self.history = []
         
 
     def init_policy(self, filename="policy.csv"):
@@ -270,3 +272,12 @@ class Agent:
         self.hand.remove(agent_best)
         return agent_best
     
+    def export_history(self, filename=None):
+        if filename is None:
+            filename = f"{self.value_func.cluster_map.num_clust}_history.csv"
+        
+        with open(filename, 'w', newline='') as csvfile:
+            csvwriter = csv.writer(csvfile)
+
+            for i in range(len(self.history)):
+                csvwriter.writerow([f"Game{i+1}", np.average(self.history[i])])

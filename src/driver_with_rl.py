@@ -200,6 +200,7 @@ class Driver():
         next_green_card = self.green_deck.cards[-1]
         rl_agent_play = agent_plays[-1][1]
         reward = WIN_REWARD if winning_agent == self.rl_agent_name else LOSE_REWARD
+        self.rl_agent.history[-1].append(reward)
         self.deal_round_cards()
         if self.current_judge != self.rl_agent_name:
             self.rl_agent.value_func.update(green_card, next_green_card, rl_agent_play, rl_prev_hand, self.rl_agent.hand, reward)
@@ -225,6 +226,7 @@ class Driver():
         for k_game in range(1, self.n_games + 1):
             self.initialize_game()
             print(f"Game {k_game}\n")
+            self.rl_agent.history.append([])
             round = 1
             while not any([score == self.cards_to_win for _, score in self.agent_scores.items()]):
                 print(f"Round: {round}")
@@ -253,6 +255,7 @@ def main():
         driver = Driver(arguments[1: -1], n_games)
         driver.main_loop()
         driver.rl_agent.value_func.save()
+        driver.rl_agent.export_history()
     except Exception as e:
         print("Error", e)
         print(format_exc())
