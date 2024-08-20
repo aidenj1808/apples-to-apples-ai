@@ -2,6 +2,8 @@
 import numpy as np
 import csv
 import ast
+import random
+import clustering as clust
 
 
 class State:
@@ -79,45 +81,87 @@ class Policy:
 
     """
 
-    def __init__(self):
+    def __init__(self, clusters=10):
         #Store value of each action-state pair
         #dict of green cards with each dict value being a dict of the hand (state)
         #then value of playing each card in hand
         self.policy = {}
+
+        if clusters != 0:
+            self.cluster_map = clust.Clustering()
+            self.cluster = True
+        else:
+            self.cluster = False
+
+        
         
 
     #Assume hand is passed as sorted list
-    def update(self, prev_green, next_green, red, prev_hand, new_hand, reward=0., step=1., discount=1.):
+    def update(self, prev_green, next_green, red, prev_hand, new_hand, reward=0., step=0.5, discount=0.9):
 
-        next_state = State(new_hand)
-        prev_state = State(prev_hand)
-        value_hand = []
+        if self.cluster:
+            next_state = State([self.cluster_map.get_cluster(card) for card in new_hand])
+            prev_state = State([self.cluster_map.get_cluster(card) for card in prev_hand])
+            # red = self.cluster_map.get_cluster(red)
+            prev_green = self.cluster_map.get_cluster(prev_green.lower())
+            next_green = self.cluster_map.get_cluster(next_green.lower())
 
-        prev_green = prev_green.lower()
-        next_green = next_green.lower()
+        else:
 
-        for card in new_hand:
-            value_hand.append(self.policy.setdefault(next_green, {}).setdefault(next_state, {}).setdefault(card, 0.))
-        best = value_hand[np.argmax(value_hand)]
+            next_state = State(new_hand)
+            prev_state = State(prev_hand)
+
+
+            prev_green = prev_green.lower()
+            next_green = next_green.lower() 
+
+        best_card = self.get_best_card(next_green, new_hand)
+        best_value = self.get_value(next_green, best_card, new_hand)
         
+        td = step * (reward + discount * best_value)
+        Q = (1-step) * self.get_value(prev_green, red, prev_hand)
 
-        Q = step*(reward + discount*best - self.policy.setdefault(prev_green, {}).setdefault(prev_state, {}).setdefault(best, 0.))
-        self.policy[prev_green][prev_state].setdefault(red, 0.0)
-        self.policy[prev_green][prev_state][red] += Q
+        red_ind = prev_hand.index(red)
+        self.policy[prev_green][prev_state][red_ind] = Q + td
 
         # print(prev_green, next_green, prev_hand, new_hand, red)
         
 
     def get_value(self, green, red, hand):
-        return self.policy[green][State(hand)][red]
+        if self.cluster:
+            state = State([self.cluster_map.get_cluster(card) for card in hand])
+            red = self.cluster_map.get_cluster(red)
+
+        else:
+            state = State(hand)
+        
+        red_ind = state.cards_hand.index(red)
+        copy_indices = np.nonzero(np.array(state.cards_hand) == state.cards_hand[red_ind])[0]
+        ind = random.randint(0,len(copy_indices)-1)
+        chosen_ind = copy_indices[ind]
+
+        return self.policy.setdefault(green, {}).setdefault(state, [0. for i in state.cards_hand])[chosen_ind]
     
     def get_best_card(self, green, hand):
-        state = State(hand)
-        value_hand = []
-        for card in hand:
-            value_hand.append(self.policy.setdefault(green, {}).setdefault(state, {}).setdefault(card, 0.))
+        if self.cluster:
+            state = State([self.cluster_map.get_cluster(card) for card in hand])
+        else:
+            state = State(hand)
+        value_hand = self.policy.setdefault(green, {}).setdefault(state, [0. for i in state.cards_hand])
+
+        #if more than one state-action pair has the same value, choose randomly
+        #to encourage exploration and fairer judging
+
+        #find the index of the max value state-action pair
+        #then choose randomly from all the state-action pairs that share the
+        #same value
+        max_value = np.argmax(value_hand)
         
-        return hand[np.argmax(value_hand)]
+        max_value_indices = np.nonzero(np.array(value_hand) == value_hand[max_value])[0]
+        ind = random.randint(0,len(max_value_indices)-1)
+        chosen_ind = max_value_indices[ind]
+
+        return hand[chosen_ind]
 
 
     def load(self):
@@ -137,8 +181,9 @@ class Policy:
                     else:
                         state = State(ast.literal_eval(row[0]))
                         red = row[1:]
-
-                        temp = {string.split('=')[0]:string.split('=')[1] for string in red}
+                        temp = []
+                        for string in red:
+                            temp.append(float(string.split('=')[1]))
                         self.policy.setdefault(green, {}).update({state: temp})
                         
 
@@ -157,11 +202,11 @@ class Policy:
                 for state in self.policy[green]:
                     export_string = [str(state.cards_hand)]
         
-                    for card in state.cards_hand:
-                        export_string.append(f'{card}={self.policy[green][state][card]}')
+                    for i in range(len(state.cards_hand)):
+                        export_string.append(f'{state.cards_hand[i]}={self.policy[green][state][i]}')
                     
                     csvwriter.writerow(export_string)
-            
+
 
 class Agent:
     """
@@ -201,7 +246,8 @@ class Agent:
     def __init__(self):
         self.hand = []
         self.points = 0
-        self.removed = {'R':[], 'G':[]}
+
+        self.history = []
         
 
     def init_policy(self, filename="policy.csv"):
@@ -226,3 +272,12 @@ class Agent:
         self.hand.remove(agent_best)
         return agent_best
     
+    def export_history(self, filename=None):
+        if filename is None:
+            filename = f"{self.value_func.cluster_map.num_clust}_history.csv"
+        
+        with open(filename, 'w', newline='') as csvfile:
+            csvwriter = csv.writer(csvfile)
+
+            for i in range(len(self.history)):
+                csvwriter.writerow([f"Game{i+1}", np.sum(self.history[i])])
