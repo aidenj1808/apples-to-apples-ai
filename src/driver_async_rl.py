@@ -2,6 +2,7 @@ import sys
 import subprocess
 import asyncio
 from asyncio.subprocess import PIPE
+import random
 from traceback import format_exc
 from game import Deck
 from game.RLAgent import Agent
@@ -122,7 +123,11 @@ class Driver():
 					for word in play.split():
 						if word in card:
 							possible_plays.append(card)
-				play = possible_plays[0]
+
+				if len(possible_plays) != 0:
+					play = possible_plays[0]
+				else:
+					play = random.choice(hand)
 				break
 
 			print(f"\n{agent} Retrying...\nplay: {play}\nhand: {hand}\n")
@@ -183,7 +188,11 @@ class Driver():
 					for word in winning_card.split():
 						if word in card:
 							possible_cards.append(card)
-				play = possible_cards[0]
+
+				if len(possible_cards) != 0:
+					play = possible_cards[0]
+				else:
+					play = random.choice(cards_played)
 				break
 
 			print(f"\n{self.current_judge} Retrying...\nchoice: {winning_card}\ncards played: {cards_played}\n")
