@@ -64,7 +64,7 @@ class Clustering:
 
 #Call script directly with interperter to generate new clustering file
 
-#USAGE : python3 clustering.py red_card_file green_card_file num_clusters
+#USAGE : python3 clustering.py red_card_file green_card_file num_clusters filename
 if __name__ == "__main__":
 
     from sentence_transformers import SentenceTransformer
