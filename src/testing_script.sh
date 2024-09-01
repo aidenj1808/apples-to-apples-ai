@@ -2,29 +2,22 @@
 
 #USAGE: bash testing_script NUM_GAMES
 
-cd 10
+cd 65
 echo "-------------------------------------------------------------------------"
-echo "                      TESTING 10 Cluster Games                           "
-echo "-------------------------------------------------------------------------"
-python3 driver_async_rl.py llama_agent.py gemma_agent.py sbert_agent.py RLAgent.py $1
-
-cd ..
-cd 25
-echo "-------------------------------------------------------------------------"
-echo "                      TESTING 25 Cluster Games                           "
+echo "                      TESTING 65 Cluster Games                           "
 echo "-------------------------------------------------------------------------"
 python3 driver_async_rl.py llama_agent.py gemma_agent.py sbert_agent.py RLAgent.py $1
 
 cd ..
-cd 50
+cd 70
 echo "-------------------------------------------------------------------------"
-echo "                      TESTING 50 Cluster Games                           "
+echo "                      TESTING 70 Cluster Games                           "
 echo "-------------------------------------------------------------------------"
 python3 driver_async_rl.py llama_agent.py gemma_agent.py sbert_agent.py RLAgent.py $1
 
 cd ..
-cd 100
+cd 75
 echo "-------------------------------------------------------------------------"
-echo "                      TESTING 100 Cluster Games                          "
+echo "                      TESTING 75 Cluster Games                           "
 echo "-------------------------------------------------------------------------"
 python3 driver_async_rl.py llama_agent.py gemma_agent.py sbert_agent.py RLAgent.py $1
