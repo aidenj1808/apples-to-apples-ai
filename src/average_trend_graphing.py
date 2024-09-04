@@ -4,6 +4,8 @@ from statistics import mean
 import matplotlib.pyplot as plt
 
 
+start_x = 1
+
 def main():
     args = sys.argv
     filename = args[1]
@@ -19,10 +21,10 @@ def main():
             n_games += 1
 
     games = [x for x in range(1, n_games + 1)]
-    plt.plot(games, sum_of_rewards_averages)
+    plt.plot(games[start_x:], sum_of_rewards_averages[start_x:])
     plt.xlabel("Game")
     plt.ylabel("Average Sum of Rewards")
-    plt.xticks([1] + [x for x in range(1, n_games + 1) if x % 10 == 0])
+    plt.xticks([start_x] + [x for x in range(1, n_games + 1) if x % 10 == 0 and x >= start_x])
     plt.title("Average Sum of Rewards vs. Game")
     plt.show()
 
