@@ -190,9 +190,9 @@ class Driver():
 							possible_cards.append(card)
 
 				if len(possible_cards) != 0:
-					play = possible_cards[0]
+					winning_card = possible_cards[0]
 				else:
-					play = random.choice(cards_played)
+					winning_card = random.choice(cards_played)
 				break
 
 			print(f"\n{self.current_judge} Retrying...\nchoice: {winning_card}\ncards played: {cards_played}\n")
