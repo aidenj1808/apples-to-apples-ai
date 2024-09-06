@@ -158,6 +158,18 @@ class Driver():
 				winning_agent = agent
 		return [winning_agent, winning_card, cards_played]
 
+	def log_game_results(self, filename):
+		with open(filename) as file:
+			file.readline()
+			if data := file.read():
+				current_game = int(data.split("\n")[-2].split(",")[0]) + 1
+			else:
+				current_game = 1
+
+		with open(filename, "a") as file:
+			for agent, score in self.agent_scores.items():
+				file.write(f"{current_game},{agent},{score}\n")
+
 	def get_winning_results(self, agent_plays, green_card: str):
 		print(f"{self.current_judge} is judging...")
 		cards_played = [card for _, card in agent_plays]
@@ -190,9 +202,9 @@ class Driver():
 							possible_cards.append(card)
 
 				if len(possible_cards) != 0:
-					play = possible_cards[0]
+					winning_card = possible_cards[0]
 				else:
-					play = random.choice(cards_played)
+					winning_card = random.choice(cards_played)
 				break
 
 			print(f"\n{self.current_judge} Retrying...\nchoice: {winning_card}\ncards played: {cards_played}\n")
@@ -278,6 +290,7 @@ class Driver():
 					final_results[agent] += 1
 					print(f"{agent} won the game!\n\n")
 					break
+			self.log_game_results("results.csv")
 
 			self.rl_agent.hand = []
 			
